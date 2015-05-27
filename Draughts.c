@@ -1,10 +1,12 @@
 #include "Draughts.h"
 #include <limits.h>
-#include <stdint.h>
-#include <stdlib.h>
-
-
-debug = 1;
+#include<stdlib.h>
+#include<stdio.h>
+#include<math.h>
+#include<string.h>
+#include <ctype.h>
+#include<limits.h>
+#include<float.h>
 
 
 int main()
@@ -325,4 +327,95 @@ int score(board_t b, char player){// not complete just for compilation
 		}
 	}
 	return score;
+}
+
+int compareStrings(char* str1,int l1,int r1,char* str2,int l2,int r2){
+	if(r1-l1 != r2-l2){
+		return 0;
+	}
+	int i;
+	for(i=0;i<r1-l1+1;i++){
+		if(str1[l1+i]!=str2[l2+i]){
+			return 0;
+		}
+	}return 1;
+}
+
+void analysis(char* input){
+
+	int size=0;
+	while(input[size]!='\0'){//compute the length of the input
+			size++;
+	}
+
+	if(input==strstr(input,"minmax_depth")){
+		if(input[12]!=' '){//illegal
+			printf(ILLEGAL_COMMAND);
+		}
+		char* temp = input;
+		temp+=12;
+		int value = (int)atoi(temp);
+		setMinmaxDepth(value);
+	}
+	else if(input==strstr(input,"user_color")){
+		if(input[10]!=' '){//illegal
+			printf(ILLEGAL_COMMAND);
+		}char* color = (char*)malloc(5);
+		if(DBUG){
+			printf("you should free me - im in analisis");
+		}
+		strncpy(color,input+11,5);
+		setUserColor(color);
+
+	}else if(input==strstr(input,"rm")){//remove Disk command
+		if(input[2]!=' '){//illegal
+			printf(ILLEGAL_COMMAND);
+		}
+		int i=2;
+		char column;
+		int row;
+		while(input[i]!='\0'){
+			if(input[i]=='<'){
+				column= input[++i];
+				i+=2;
+				char* temp = input+i;
+				row =(int)atoi(temp);
+			}i++;
+		}
+		location loc = {};
+		loc.x=column;
+		loc.y=row;
+		removeDisc(loc);
+	}
+	else if(input==strstr(input,"clear")){
+		if(input[5]!='\0'){//illegal
+			printf(ILLEGAL_COMMAND);
+		}claer();
+
+	}else if(input==strstr(input,"print")){
+		if(input[5]!='\0'){//illegal
+			printf(ILLEGAL_COMMAND);
+		}print_board();
+	}else if(input==strstr(input,"quit")){
+		if(input[4]!='\0'){//illegal
+			printf(ILLEGAL_COMMAND);
+		}quit();
+	}else if(input==strstr(input,"start")){
+		if(input[5]!='\0'){//illegal
+			printf(ILLEGAL_COMMAND);
+		}start();
+	}else if(input==strstr(input,"move")){
+		if(input[4]!=' '){//illegal
+			printf(ILLEGAL_COMMAND);
+		}
+		//replace with your code
+
+	}else if(input==strstr(input,"get_moves")){
+		if(input[9]!='\0'){//illegal
+			printf(ILLEGAL_COMMAND);
+		}printMoveList(setMoveList(currentPlayer,board));
+
+	}else{//illegal command
+		printf(ILLEGAL_COMMAND);
+	}
 }
