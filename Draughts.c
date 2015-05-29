@@ -90,11 +90,11 @@ int Max(int depth, char player, board_t board, steps** bestStep){
 	char otherPlayer = ('b' + 'w' - player);
 	int currMin = INT_MAX;
 	int stepScore;
-	linkedList moves = setMoveList(otherPlayer, board);
-	listNode* node = moves.first;
+	linkedList* moves = setMoveList(otherPlayer, board);
+	listNode* node = moves->first;
 	while (node!=NULL)
 	{
-		stepScore = score(Min(depth - 1, otherPlayer, moveDisc(board,*(steps*)node->data, player),bestStep));
+		stepScore = score(Min(depth - 1, otherPlayer, moveDisc(&board,*(steps*)node->data),bestStep),player);
 		if (stepScore < currMin){
 			currMin = stepScore;
 			*bestStep = (steps*)node->data;
@@ -110,11 +110,11 @@ int Min(int depth, char player, board_t board, steps** bestStep){
 	char otherPlayer = ('b' + 'w' - player);
 	int currMin = INT_MIN;
 	int stepScore;
-	linkedList moves = setMoveList(otherPlayer, board);
-	listNode* node = moves.first;
+	linkedList* moves = setMoveList(otherPlayer, board);
+	listNode* node = moves->first;
 	while (node != NULL)
 	{
-		stepScore = score(max(depth - 1, otherPlayer, moveDisc(board,*(steps*)node->data, player), bestStep),player);
+		stepScore = score(max(depth - 1, otherPlayer, moveDisc(&board,*(steps*)node->data), bestStep),player);
 		if (stepScore > currMin){
 			currMin = stepScore;
 			*bestStep = (steps*)node->data;
@@ -130,6 +130,24 @@ steps* minmax(char player){
 }
 
 
+void addStep(location* loc, steps* thisSteps){
+	listNode* node = (listNode*)malloc(sizeof(listNode));
+	node->data = loc;
+	thisSteps->last->next = node;
+	thisSteps->last = node;
+}
+
+void addNodeTOList(listNode** node, linkedList* list){
+	(*node)->next = list->first;
+	list->first = *node;
+}
+
+listNode* newNode(void* data){
+	listNode* node = (listNode*)malloc(sizeof(listNode));
+	node->data = data;
+	return node;
+}
+
 //assumes that the disc in loc is own by player
 //assumes that the disc in loc is a man
 //assumes moving is possible
@@ -144,19 +162,13 @@ void mMoveStepLeftRight(board_t board, char player, steps thisSteps, linkedList*
 	{
 		direction = -1;
 	}
-	listNode* node = (listNode*)malloc(sizeof(listNode));
 	location* locAfterStep = (location*)malloc(sizeof(location));
 	locAfterStep->x = lastLoc.x - 'a' + leftRight;
 	locAfterStep->y = lastLoc.y + direction;
-	node->data = locAfterStep;
-	thisSteps.last->next = node; // update possible steps
-	thisSteps.last = node;
-	listNode* newPossibleSteps = (listNode*)malloc(sizeof(listNode));
-	newPossibleSteps->data = &thisSteps;
-	newPossibleSteps->next = possibleSteps->first;
-	possibleSteps->first = newPossibleSteps;
+	addStep(locAfterStep, &thisSteps);
+	listNode* newPossibleSteps = newNode(&thisSteps);
+	addNodeTOList(&newPossibleSteps, possibleSteps);
 }
-
 
 void moveEat(board_t board, char player, steps thisSteps, linkedList* possibleSteps, int leftRight){
 	location lastLoc = *(location*)thisSteps.last;
@@ -169,20 +181,17 @@ void moveEat(board_t board, char player, steps thisSteps, linkedList* possibleSt
 	{
 		direction = -1;
 	}
-	listNode* node = (listNode*)malloc(sizeof(listNode));
 	location* locAfterStep = (location*)malloc(sizeof(location));
 	locAfterStep->x = lastLoc.x - 'a' + 2*leftRight;
-	locAfterStep->y = lastLoc.y + 2*direction;
-	node->data = locAfterStep;
-	thisSteps.last->next = node; // update possible steps
-	thisSteps.last = node;
+	location* locAfterStep = (location*)malloc(sizeof(location));
+	locAfterStep->x = lastLoc.x - 'a' + leftRight;
+	locAfterStep->y = lastLoc.y + direction;
+	addStep(locAfterStep, &thisSteps);
+	listNode* newPossibleSteps = newNode(&thisSteps);
 	thisSteps.numberOfEats++;
-	listNode* newPossibleSteps = (listNode*)malloc(sizeof(listNode));
-	newPossibleSteps->data = &thisSteps;
-	newPossibleSteps->next = possibleSteps->first;
-	possibleSteps->first = newPossibleSteps;
+	addNodeTOList(&newPossibleSteps, possibleSteps);
 	steps nextStep = {NULL}; // change this to be the next step to be taken!
-	mMove(moveDisc(board,nextStep, player), player, thisSteps, possibleSteps);
+	mMove(moveDisc(&board,nextStep), player, thisSteps, possibleSteps);
 }
 
 //return 1 if blocked
@@ -286,20 +295,16 @@ void freeNode(listNode* node){
 		free(node);
 	}
 
-board_t moveDisc(board_t b,steps s, char c){ // not complete just for compilation
-	return b;
-}
 
-linkedList setMoveList(char c, board_t b){// not complete just for compilation
-	return;
-}
+
+
 
 int score(board_t b, char player){// not complete just for compilation
-	if (setMoveList(player,b).first == NULL) // no possible moves
+	if (setMoveList(player,b)->first == NULL) // no possible moves
 	{
 		return -100; // losing score
 	}
-	if (setMoveList('w' + 'b' - player, b).first == NULL) // other player has no possible moves
+	if (setMoveList('w' + 'b' - player, b)->first == NULL) // other player has no possible moves
 	{
 		return 100; // winning score
 	}
@@ -341,7 +346,7 @@ int compareStrings(char* str1,int l1,int r1,char* str2,int l2,int r2){
 	}return 1;
 }
 
-void analysis(char* input){
+void analysis(char* input,board_t b){
 
 	int size=0;
 	while(input[size]!='\0'){//compute the length of the input
@@ -361,7 +366,7 @@ void analysis(char* input){
 		if(input[10]!=' '){//illegal
 			printf(ILLEGAL_COMMAND);
 		}char* color = (char*)malloc(5);
-		if(DBUG){
+		if(1){
 			printf("you should free me - im in analisis");
 		}
 		strncpy(color,input+11,5);
@@ -382,7 +387,7 @@ void analysis(char* input){
 				row =(int)atoi(temp);
 			}i++;
 		}
-		location loc = {};
+		location loc;
 		loc.x=column;
 		loc.y=row;
 		removeDisc(loc);
@@ -395,7 +400,7 @@ void analysis(char* input){
 	}else if(input==strstr(input,"print")){
 		if(input[5]!='\0'){//illegal
 			printf(ILLEGAL_COMMAND);
-		}print_board();
+		}print_board(b);
 	}else if(input==strstr(input,"quit")){
 		if(input[4]!='\0'){//illegal
 			printf(ILLEGAL_COMMAND);
@@ -413,9 +418,93 @@ void analysis(char* input){
 	}else if(input==strstr(input,"get_moves")){
 		if(input[9]!='\0'){//illegal
 			printf(ILLEGAL_COMMAND);
-		}printMoveList(setMoveList(currentPlayer,board));
+		}printMoveList(setMoveList(userColor, b));
 
 	}else{//illegal command
 		printf(ILLEGAL_COMMAND);
 	}
+}
+
+void kMoveStep(board_t board, char player, steps thisSteps, linkedList* possibleSteps){
+
+}
+
+void kMove(board_t board, char player, steps thisSteps, linkedList* possibleSteps){}
+
+steps* locationToSteps(location* loc){
+	steps* thisSteps = (steps*)malloc(sizeof(steps));
+	thisSteps->numberOfEats = 0;
+	linkedList listOfSteps;
+	listNode* firstStep = (listNode*)malloc(sizeof(listNode));
+	firstStep->data = loc;
+	listOfSteps.first = firstStep;
+	thisSteps->last = firstStep;
+	thisSteps->listOfSteps = listOfSteps;
+	return thisSteps;
+}
+
+linkedList* setMoveList(char player, board_t board){
+	linkedList* possibleSteps = (linkedList*)malloc(sizeof(linkedList));
+	possibleSteps->first = NULL;
+	location* loc = (location*)malloc(sizeof(loc));
+	steps* thisSteps;
+	for (int i = 0; i < BOARD_SIZE; i++)
+	{
+		for (int j = 0; j < BOARD_SIZE; j++){
+			loc->x = 'a' + i;
+			loc->y = j;
+			thisSteps = locationToSteps(loc);
+			if (board[i][j] == WHITE_M && player == 'w' || board[i][j] == BLACK_M && player == 'b')
+			{
+				mMove(board, player, *thisSteps, possibleSteps);	
+			}
+			if (board[i][j] == WHITE_K && player == 'w' || board[i][j] == BLACK_K && player == 'b')
+			{
+				kMove(board, player, *thisSteps, possibleSteps);
+			}
+		}
+	}
+	updatePossibleSteps(possibleSteps);
+	free(thisSteps); // change to completly free the struct!
+}
+
+void printLocation(location* loc){
+	printf("<%n,%d>", loc->x, loc->y);
+}
+
+void printSteps(steps* thisSteps){
+	linkedList listofSteps = thisSteps->listOfSteps;
+	listNode* node = listofSteps.first;
+	printLocation((location*)node->data);
+	printf(" to ");
+	node = node->next;
+	while (node != NULL)
+	{
+		printLocation((location*)node->data);
+		node = node->next;
+	}
+}
+
+void printMoveList(linkedList* list){
+	listNode* node = list->first;
+	while (node != NULL)
+	{
+		printSteps((steps*)node->data);
+		node = node->next;
+		if (node!=NULL)
+		{
+			printf("\n");
+		}
+	}
+}
+
+board_t moveDisc(board_t* board, steps thisSteps){
+	int i = ((location*)thisSteps.listOfSteps.first->data)->x - 'a';
+	int j = ((location*)thisSteps.listOfSteps.first->data)->y;
+	char type = board[i][j];
+	board[i][j] = ' ';
+	i = ((location*)thisSteps.last->data)->x;
+	j = ((location*)thisSteps.last->data)->y;
+	board[i][j] = type;
+	return *board;
 }
